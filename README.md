@@ -37,6 +37,10 @@ npm run db:migrate            # crea prisma/dev.db a partir de las migraciones
 npm run dev                   # http://localhost:3000/api
 ```
 
+> **Windows:** algunos ficheros de la colección Bruno del submódulo tienen nombres largos. Si
+> clonas en una carpeta con una ruta larga y git avisa de `Filename too long`, clona en una ruta más
+> corta o activa las rutas largas antes de clonar: `git config --global core.longpaths true`.
+
 | Script | Qué hace |
 | --- | --- |
 | `npm test` | Pruebas propias, contra una base `prisma/test.db` que se recrea en cada ejecución |
