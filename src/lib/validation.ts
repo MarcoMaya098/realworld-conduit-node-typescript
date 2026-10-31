@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type ErrorBody, unprocessable } from '../errors';
+import { type ErrorBody, invalid } from '../domain/errors';
 
 export const BLANK = "can't be blank";
 export const tooLong = (max: number) => `is too long (maximum is ${max} characters)`;
@@ -11,7 +11,7 @@ export const tooLong = (max: number) => `is too long (maximum is ${max} characte
 export function parse<T extends z.ZodType>(schema: T, input: unknown): z.output<T> {
   const result = schema.safeParse(input);
   if (!result.success) {
-    throw unprocessable(toErrorBody(result.error));
+    throw invalid(toErrorBody(result.error));
   }
   return result.data;
 }

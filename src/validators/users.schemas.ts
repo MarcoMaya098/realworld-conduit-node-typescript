@@ -16,7 +16,7 @@ import {
   nullableText,
   orEmpty,
   requiredString,
-} from '../../lib/validation';
+} from '../lib/validation';
 
 // Pragmatic check (something@something.tld); deliverability is not verified.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -89,7 +89,3 @@ export const updateUserSchema = orEmpty(
     ),
   }),
 );
-
-export type RegisterInput = z.output<typeof registerSchema>['user'];
-export type LoginInput = z.output<typeof loginSchema>['user'];
-export type UpdateUserInput = z.output<typeof updateUserSchema>['user'];

@@ -7,7 +7,7 @@ con **Node.js + TypeScript + Express 5 + Prisma 6 + SQLite**.
 | --- | --- |
 | Colección oficial de la API (Hurl) | **13/13 ficheros, 154/154 peticiones** |
 | Colección oficial Bruno (espejo generado de la Hurl) | **13/13 carpetas, 154/154 peticiones** |
-| Pruebas propias (Vitest + Supertest) | **83/83** (unitarias + integración) |
+| Pruebas propias (Vitest + Supertest) | **95/95** (unitarias + integración) |
 | `npm audit` | **0 vulnerabilidades** (también se comprueba en el CI) |
 | Especificación verificada | `gothinkster/realworld@c5aecdf` (30/10/2026), OpenAPI `2.0.0` |
 
@@ -117,19 +117,42 @@ cliente. Escapar al mostrar es responsabilidad del frontend (la suite E2E de Rea
 
 ## Arquitectura
 
+Clean architecture con capas por tipo e inyección de dependencias por constructor:
+
 ```
 src/
-  app.ts, server.ts, env.ts, config.ts, db.ts, errors.ts
-  logger.ts, docs.ts (Swagger UI)
-  lib/          validation (Zod → formato de error RealWorld + saneamiento), jwt, password, slug, http
-  middleware/   auth (requireAuth / optionalAuth), security (helmet, CORS, HTTPS), rate-limit,
-                request-logger, error-handler
-  modules/<recurso>/
-    *.schemas.ts      VALIDACIÓN: forma, límites y saneamiento de la entrada (Zod). Sin E/S.
-    *.service.ts      LÓGICA: reglas de negocio, permisos, slugs, conflictos; DTOs de respuesta.
-    *.repository.ts   DATOS: único sitio que habla con Prisma.
-    *.routes.ts       HTTP: parse → servicio → código de estado. Sin lógica.
+  domain/            NÚCLEO. No importa Express ni Prisma.
+    entities/          User, Profile, Article, Comment, Pagination (tipos planos)
+    repositories.ts    Interfaces (puertos) de persistencia: UserRepository, ArticleRepository…
+    security.ts        Interfaces PasswordHasher y TokenService
+    errors.ts          DomainError (unauthenticated, forbidden, not_found, conflict, invalid)
+  dtos/              Contratos de datos: entradas de los servicios y formas JSON de la especificación.
+  types/             Tipos de configuración y cableado (AppOptions, Container…) y la extensión
+                     de Request de Express (express.d.ts).
+  services/          LÓGICA: reglas de negocio, permisos, slugs, conflictos. Reciben interfaces.
+  repositories/      DATOS: implementaciones Prisma de los puertos; includes, tipos de fila
+                     (prisma-rows.types.ts) y mappers filas → entidades.
+  infrastructure/    Cliente Prisma, ScryptPasswordHasher, JwtTokenService.
+  validators/        VALIDACIÓN: forma, límites y saneamiento de la entrada (Zod). Sin E/S.
+  controllers/       HTTP: valida → llama al servicio → código de estado; presenters.ts da la
+                     forma JSON de la especificación (DTOs).
+  routes/            Tabla de rutas: método + path → middleware de auth → controller.
+  middleware/        auth, security (helmet, CORS, HTTPS), rate-limit, request-logger,
+                     error-handler (DomainError → código HTTP).
+  container.ts       Raíz de composición: único sitio que elige implementaciones y las inyecta.
+  app.ts, server.ts, config.ts, env.ts, logger.ts, docs.ts (Swagger UI)
+  lib/               validation (Zod → formato de error RealWorld), slug, http
 ```
+
+Los archivos de comportamiento (servicios, controllers, rutas, middleware, repositorios) no
+declaran interfaces ni tipos: los contratos viven en `domain/`, `dtos/`, `types/` o en un
+`*.types.ts`.
+
+Las dependencias apuntan hacia dentro: `controllers → services → domain ← repositories`.
+Los servicios solo conocen interfaces del dominio, así que se prueban con dobles sin base de
+datos (`test/unit/services.test.ts`), y cambiar Prisma por otra persistencia solo afecta a
+`repositories/`, `infrastructure/` y `container.ts`. `createApp(overrides, container)` acepta
+otro contenedor para los tests.
 
 
 ## Decisiones
@@ -193,6 +216,9 @@ elegí la opción más defendible y la documento aquí:
 - `test/unit/`: validación (formato de error, normalización, saneamiento, límites, política de
   contraseñas, paginación), seguridad (hash sin truncado; JWT manipulado, con otro secreto, otro
   issuer/audience, `alg: none` o caducado) y slugs.
+  - `services.test.ts`: reglas de negocio con repositorios falsos inyectados, sin base de datos
+    (404 antes que 403, solo el autor edita o borra, slug y `updatedAt` al actualizar, sufijo
+    ante colisión, login con tiempo constante, 409 con todos los campos, contraseña hasheada).
 - `test/integration/`: la app real con Supertest contra SQLite. Cubren lo que la suite oficial no:
   orden y forma exacta de las respuestas, `favorited`/`following` según quién mira, filtros
   combinados, borrado en cascada, slug tras cambiar el título, 404 antes que 403, un comentario que

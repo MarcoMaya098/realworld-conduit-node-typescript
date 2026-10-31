@@ -1,7 +1,15 @@
 import jwt from 'jsonwebtoken';
 import { describe, expect, it } from 'vitest';
-import { signToken, verifyToken } from '../../src/lib/jwt';
-import { hashPassword, verifyPassword } from '../../src/lib/password';
+import { JwtTokenService } from '../../src/infrastructure/jwt-token-service';
+import { ScryptPasswordHasher } from '../../src/infrastructure/scrypt-password-hasher';
+
+const hasher = new ScryptPasswordHasher();
+const hashPassword = (password: string) => hasher.hash(password);
+const verifyPassword = (password: string, stored: string | undefined) => hasher.verify(password, stored);
+
+const tokens = new JwtTokenService({ secret: 'test-secret', expiresInSeconds: 3600, issuer: 'conduit-api', audience: 'conduit' });
+const signToken = (userId: number) => tokens.sign(userId);
+const verifyToken = (token: string) => tokens.verify(token);
 
 describe('password hashing', () => {
   it('verifies the right password and rejects a wrong one', async () => {
@@ -19,6 +27,10 @@ describe('password hashing', () => {
     const long = 'x'.repeat(100);
     const hash = await hashPassword(long);
     expect(await verifyPassword(`${'x'.repeat(99)}y`, hash)).toBe(false);
+  });
+
+  it('fails for an unknown account (no stored hash) after hashing anyway', async () => {
+    expect(await verifyPassword('anything', undefined)).toBe(false);
   });
 
   it('rejects a malformed stored hash instead of throwing', async () => {

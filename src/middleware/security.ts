@@ -9,8 +9,7 @@
 import cors from 'cors';
 import type { RequestHandler } from 'express';
 import helmet from 'helmet';
-import type { CorsOrigins } from '../config';
-import { HttpError } from '../errors';
+import type { CorsOrigins } from '../types/app.types';
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 
@@ -56,5 +55,5 @@ export const requireHttps: RequestHandler = (req, res, next) => {
     res.redirect(301, `https://${req.hostname}${req.originalUrl}`);
     return;
   }
-  next(new HttpError(403, { https: ['required'] }));
+  res.status(403).json({ errors: { https: ['required'] } });
 };

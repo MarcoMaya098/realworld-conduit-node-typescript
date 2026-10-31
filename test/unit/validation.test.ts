@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { HttpError } from '../../src/errors';
+import { DomainError } from '../../src/domain/errors';
 import { parse } from '../../src/lib/validation';
 import {
   createArticleSchema,
   listArticlesQuerySchema,
   normalizeTags,
   updateArticleSchema,
-} from '../../src/modules/articles/articles.schemas';
-import { registerSchema, updateUserSchema } from '../../src/modules/users/users.schemas';
+} from '../../src/validators/articles.schemas';
+import { registerSchema, updateUserSchema } from '../../src/validators/users.schemas';
 
 /** Runs `parse` and returns the RealWorld error body it throws. */
 function errorsOf(schema: Parameters<typeof parse>[0], input: unknown) {
   try {
     parse(schema, input);
   } catch (err) {
-    expect(err).toBeInstanceOf(HttpError);
-    expect((err as HttpError).status).toBe(422);
-    return (err as HttpError).errors;
+    expect(err).toBeInstanceOf(DomainError);
+    expect((err as DomainError).kind).toBe('invalid');
+    return (err as DomainError).errors;
   }
   throw new Error('expected validation to fail');
 }

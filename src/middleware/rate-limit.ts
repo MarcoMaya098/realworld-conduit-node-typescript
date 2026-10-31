@@ -7,13 +7,13 @@
 
 import type { Request, RequestHandler } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
-import type { AuthRateLimitConfig } from '../config';
-import { HttpError } from '../errors';
+import type { AuthRateLimitConfig } from '../types/app.types';
 
 const passThrough: RequestHandler = (_req, _res, next) => next();
 
-const tooManyRequests: RequestHandler = (_req, _res, next) =>
-  next(new HttpError(429, { requests: ['too many, try again later'] }));
+const tooManyRequests: RequestHandler = (_req, res) => {
+  res.status(429).json({ errors: { requests: ['too many, try again later'] } });
+};
 
 function loginEmail(req: Request): string {
   const email: unknown = req.body?.user?.email;

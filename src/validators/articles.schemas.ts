@@ -15,7 +15,7 @@ import {
   orEmpty,
   requiredString,
   stripControlChars,
-} from '../../lib/validation';
+} from '../lib/validation';
 
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 500;
@@ -87,8 +87,3 @@ export const listArticlesQuerySchema = paginationSchema.extend({
   author: filterParam(FILTER_MAX),
   favorited: filterParam(FILTER_MAX),
 });
-
-export type CreateArticleInput = z.output<typeof createArticleSchema>['article'];
-export type UpdateArticleInput = z.output<typeof updateArticleSchema>['article'];
-export type Pagination = z.output<typeof paginationSchema>;
-export type ListArticlesQuery = z.output<typeof listArticlesQuerySchema>;

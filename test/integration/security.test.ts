@@ -1,6 +1,7 @@
 import supertest from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { type AppOptions, createApp } from '../../src/app';
+import { createApp } from '../../src/app';
+import type { AppOptions } from '../../src/types/app.types';
 import { api, auth, registerUser, resetDatabase } from '../helpers';
 
 beforeEach(resetDatabase);

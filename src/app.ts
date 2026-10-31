@@ -1,26 +1,22 @@
+/**
+ * Builds the Express app: global middleware (logs, HTTPS, security headers, CORS, JSON body),
+ * the /api routes wired to the controllers from the container, Swagger UI, then the 404 and
+ * error handlers. `overrides` and `container` let tests change settings or implementations.
+ */
+
 import express, { type Express } from 'express';
-import { type AuthRateLimitConfig, type CorsOrigins, config } from './config';
+import { config } from './config';
+import { createContainer } from './container';
 import { docsRouter } from './docs';
 import { errorHandler, routeNotFound } from './middleware/error-handler';
 import { authRateLimiters } from './middleware/rate-limit';
 import { requestLogger } from './middleware/request-logger';
 import { requireHttps, securityHeaders, strictCors } from './middleware/security';
-import { articlesRouter } from './modules/articles/articles.routes';
-import { commentsRouter } from './modules/comments/comments.routes';
-import { healthRouter } from './modules/health/health.routes';
-import { profilesRouter } from './modules/profiles/profiles.routes';
-import { tagsRouter } from './modules/tags/tags.routes';
-import { usersRouter } from './modules/users/users.routes';
+import { apiRouter } from './routes';
+import type { AppOptions } from './types/app.types';
+import type { Container } from './types/container.types';
 
-export interface AppOptions {
-  authRateLimit: AuthRateLimitConfig;
-  corsOrigins: CorsOrigins;
-  requireHttps: boolean;
-  trustProxyHops: number;
-  docsEnabled: boolean;
-}
-
-export function createApp(overrides: Partial<AppOptions> = {}): Express {
+export function createApp(overrides: Partial<AppOptions> = {}, container: Container = createContainer()): Express {
   const options: AppOptions = {
     authRateLimit: config.authRateLimit,
     corsOrigins: config.corsOrigins,
@@ -40,12 +36,7 @@ export function createApp(overrides: Partial<AppOptions> = {}): Express {
   app.use(strictCors(options.corsOrigins));
   app.use(express.json({ limit: '1mb' }));
 
-  const limiters = authRateLimiters(options.authRateLimit);
-  const api = express.Router();
-  api.post('/users', limiters.register);
-  api.post('/users/login', limiters.login);
-  api.use(healthRouter, usersRouter, profilesRouter, articlesRouter, commentsRouter, tagsRouter);
-  app.use('/api', api);
+  app.use('/api', apiRouter(container.controllers, container.auth, authRateLimiters(options.authRateLimit)));
 
   const docs = options.docsEnabled ? docsRouter() : null;
   if (docs) app.use('/api', docs);

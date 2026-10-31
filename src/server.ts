@@ -4,7 +4,7 @@ import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { createApp } from './app';
 import { config } from './config';
-import { prisma } from './db';
+import { prisma } from './infrastructure/prisma';
 import { logger } from './logger';
 
 const app = createApp();
