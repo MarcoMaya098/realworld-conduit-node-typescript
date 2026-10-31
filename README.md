@@ -26,8 +26,7 @@ deja abiertas. Cada decisión que se aparta de la especificación, o la completa
 
 ## Puesta en marcha
 
-Requisitos: Node ≥ 22 (probado con 24; Node 20 está fuera de soporte desde abril de 2026),
-[Hurl](https://hurl.dev) para la suite oficial y Git.
+Requisitos: Node ≥ 22 (probado con 24); para la suite oficial y Git.
 
 ```bash
 git clone --recurse-submodules https://github.com/MarcoMaya098/realworld-conduit-node-typescript.git
@@ -37,10 +36,6 @@ cp .env.example .env          # DATABASE_URL, JWT_SECRET, PORT (+ opciones docum
 npm run db:migrate            # crea prisma/dev.db a partir de las migraciones
 npm run dev                   # http://localhost:3000/api
 ```
-
-> **Windows:** algunos ficheros de la colección Bruno del submódulo tienen nombres largos. Si
-> clonas en una carpeta con una ruta larga y git avisa de `Filename too long`, clona en una ruta más
-> corta o activa las rutas largas antes de clonar: `git config --global core.longpaths true`.
 
 | Script | Qué hace |
 | --- | --- |
@@ -59,13 +54,6 @@ copia; solo se cambia `servers` para que «Try it out» llame a este servidor. E
 `POST /users` o `POST /users/login`, copia el `token` y en **Authorize** escribe `Token <token>`
 (con el prefijo, porque la especificación define el esquema como una cabecera `apiKey`). En
 producción Swagger está apagado por defecto (`DOCS_ENABLED`).
-
-> **Ojo con `HOST`:** el README de la especificación sugiere `HOST=http://localhost:3000/api`, pero
-> todas las peticiones Hurl ya llevan el prefijo (`{{host}}/api/users`). `HOST` debe ser el origen
-> **sin** `/api`; si no, todo da 404 por `/api/api/...`.
-
-El CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) ejecuta `npm audit`, typecheck, las
-pruebas propias y la colección oficial contra el build de producción.
 
 ## Seguridad
 
@@ -146,7 +134,7 @@ src/
 
 ## Decisiones
 
-- **Alcance: la API completa, no solo autenticación y artículos.** El reto pide ese corte, pero la
+- **Alcance: la API completa, no solo autenticación y artículos.**  La
   colección oficial no se puede separar: `errors_authorization.hurl` crea comentarios,
   `errors_articles.hurl` prueba favoritos y el feed, y `feed.hurl` depende de los follows. Para
   entregar la colección **pasando** implementé también perfiles, comentarios, favoritos y tags, con
