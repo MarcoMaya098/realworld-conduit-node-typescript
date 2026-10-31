@@ -6,15 +6,17 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to Ubuntu 26, where Hurl's .deb cannot install
+    # (it depends on the `libxml2` package, renamed there).
+    runs-on: ubuntu-24.04
     env:
       DATABASE_URL: file:./ci.db
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -28,9 +30,10 @@ jobs:
 
       - name: Install Hurl
         run: |
-          VERSION=6.1.1
+          VERSION=8.0.1
           curl --fail --location --remote-name "https://github.com/Orange-OpenSource/hurl/releases/download/${VERSION}/hurl_${VERSION}_amd64.deb"
           sudo apt-get update && sudo apt-get install -y "./hurl_${VERSION}_amd64.deb"
+          hurl --version
 
       # Production build and defaults, except plain HTTP: the suite talks to localhost without
       # TLS, which in a real deployment would be terminated by a proxy in front of the app.
