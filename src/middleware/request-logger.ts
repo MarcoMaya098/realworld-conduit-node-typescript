@@ -1,3 +1,9 @@
+/**
+ * Structured request logging with pino: one JSON line per request (id, method, URL, status,
+ * response time), warn for 4xx and error for 5xx. Gives every request an id, echoed in
+ * X-Request-Id, and exposes req.log to handlers. Request bodies are never logged.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { pinoHttp } from 'pino-http';
 import { logger } from '../logger';

@@ -1,3 +1,9 @@
+/**
+ * BUSINESS LOGIC for profiles: read a profile (404 profile if unknown), follow and unfollow
+ * (idempotent; following yourself is a 422), and the Profile shape used everywhere an
+ * author appears.
+ */
+
 import { notFound, unprocessable } from '../../errors';
 import { type ProfileRow, profilesRepository } from './profiles.repository';
 

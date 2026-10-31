@@ -1,3 +1,10 @@
+/**
+ * Last stop for every error. Converts HttpError, malformed JSON (422) and unique-constraint
+ * races (409) into the RealWorld body {"errors": {...}}. Anything else is logged with the
+ * request id and answered with a generic 500, so no stack trace or internals reach the
+ * client. Also provides the 404 for unknown routes.
+ */
+
 import { Prisma } from '@prisma/client';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { alreadyTaken, HttpError, notFound, unprocessable } from '../errors';

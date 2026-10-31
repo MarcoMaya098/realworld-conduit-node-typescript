@@ -1,3 +1,8 @@
+/**
+ * BUSINESS LOGIC for comments: the article must exist (404 article), the comment must belong
+ * to that article (404 comment), and only the comment's own author may delete it (403).
+ */
+
 import { forbidden, notFound } from '../../errors';
 import { articlesRepository } from '../articles/articles.repository';
 import { type ProfileDto, toProfileDto } from '../profiles/profiles.service';

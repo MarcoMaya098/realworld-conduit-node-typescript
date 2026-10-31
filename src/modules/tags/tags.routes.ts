@@ -1,10 +1,13 @@
+/**
+ * GET /api/tags: tags attached to at least one article, most used first.
+ * A single read-only query, so it skips the schema/service/repository layers on purpose.
+ */
+
 import { Router } from 'express';
 import { prisma } from '../../db';
 
 export const tagsRouter = Router();
 
-// Too small for its own service/repository layers: a single read-only query.
-// Only tags still attached to an article, most used first.
 tagsRouter.get('/tags', async (_req, res) => {
   const tags = await prisma.tag.findMany({
     where: { articles: { some: {} } },

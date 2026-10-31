@@ -1,3 +1,10 @@
+/**
+ * BUSINESS LOGIC for authentication and the current user: registration (409 on taken
+ * username/email), login (same 401 for unknown email and wrong password, constant-time),
+ * reading and updating the user (re-hashes a new password), and the User shape with a
+ * freshly signed token.
+ */
+
 import type { User } from '@prisma/client';
 import { alreadyTaken, invalidCredentials, unauthorized } from '../../errors';
 import { signToken } from '../../lib/jwt';

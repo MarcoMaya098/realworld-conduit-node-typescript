@@ -1,3 +1,12 @@
+/**
+ * VALIDATION layer for articles (pure Zod, no I/O):
+ * - request bodies: create (title, description and body required) and update (at least one
+ *   field; tagList may be [] to clear tags but not null);
+ * - query strings: pagination (limit >= 1, offset >= 0) and list filters (tag, author,
+ *   favorited).
+ * Sanitises and caps every string, normalises tags (trim, drop empty, de-duplicate in order).
+ */
+
 import { z } from 'zod';
 import {
   atLeastOneField,

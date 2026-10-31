@@ -1,3 +1,7 @@
+/**
+ * HTTP layer for /api/profiles/:username: GET (auth optional) and POST / DELETE /follow (auth).
+ */
+
 import { Router } from 'express';
 import { pathParam } from '../../lib/http';
 import { currentUserId, optionalAuth, requireAuth } from '../../middleware/auth';

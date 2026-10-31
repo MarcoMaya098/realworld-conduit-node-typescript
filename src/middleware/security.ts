@@ -1,3 +1,11 @@
+/**
+ * HTTP hardening applied to every request, configured from config (overridable per app in
+ * tests):
+ * - securityHeaders: helmet (HSTS, CSP, nosniff, framing protection).
+ * - strictCors: allow-list CORS, no credentials, only the API's methods and headers.
+ * - requireHttps: redirects plain-HTTP reads to https and refuses plain-HTTP writes.
+ */
+
 import cors from 'cors';
 import type { RequestHandler } from 'express';
 import helmet from 'helmet';

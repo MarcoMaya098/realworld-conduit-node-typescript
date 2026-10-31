@@ -30,7 +30,8 @@ Requisitos: Node ≥ 22 (probado con 24; Node 20 está fuera de soporte desde ab
 [Hurl](https://hurl.dev) para la suite oficial y Git.
 
 ```bash
-git clone --recurse-submodules <este-repo> && cd conduit-api
+git clone --recurse-submodules https://github.com/MarcoMaya098/realworld-conduit-node-typescript.git
+cd realworld-conduit-node-typescript
 npm install
 cp .env.example .env          # DATABASE_URL, JWT_SECRET, PORT (+ opciones documentadas)
 npm run db:migrate            # crea prisma/dev.db a partir de las migraciones
@@ -77,7 +78,7 @@ pruebas propias y la colección oficial contra el build de producción.
 | **Rate limiting** | Registro y login (detalles en [Operación](#operación)) |
 | **Saneamiento de entrada** | Ver abajo |
 | **Inyección SQL** | Solo consultas parametrizadas de Prisma; la única consulta raw (`SELECT 1` del health) es una plantilla sin parámetros |
-| **Dependencias** | `npm audit` a 0 y verificado en el CI. Ver [Dependencias](#dependencias) |
+| **Dependencias** | `npm audit` a 0 y verificado en el CI |
 
 **Saneamiento de entrada.** Todo lo que entra pasa por un esquema Zod antes de llegar a la lógica:
 
@@ -125,22 +126,6 @@ cliente. Escapar al mostrar es responsabilidad del frontend (la suite E2E de Rea
     un store compartido (Redis). Detrás de un proxy hay que fijar `TRUST_PROXY_HOPS` para que el
     límite use la IP real del cliente.
 
-## Dependencias
-
-Revisadas el 30/10/2026 con `npm outdated` y `npm audit`. Partí de 7 vulnerabilidades (2 críticas,
-4 altas, 1 moderada) y quedé en 0. Las versiones están fijadas, y descarté las publicadas en las
-dos semanas anteriores.
-
-| Paquete | Acción | Motivo |
-| --- | --- | --- |
-| `zod` 3 → **4.6.7** | Actualizado y esquemas migrados | Vulnerabilidad alta (agotamiento de memoria al validar colecciones grandes). Es la librería que valida toda la entrada |
-| `vitest` 3 → **4.1.12** | Actualizado | Vulnerabilidades críticas en `tinypool` y `@vitest/mocker`. Solo afectaban al entorno de pruebas |
-| `deepmerge-ts` | `override` a **8.0.2** | Vulnerabilidad alta dentro del CLI de Prisma 6 (no llega al servidor). La corrección oficial exigía Prisma 7 |
-| `helmet` **8.3.0** | Añadido | Cabeceras de seguridad |
-| `prisma` / `@prisma/client` | Se queda en **6.19.3** | Prisma 7 obliga a usar driver adapters y la 8 es una release candidate. Con el `override`, la 6 no tiene vulnerabilidades |
-| `typescript` | Se queda en **5.9** | La 7 es el port nativo en Go: un cambio de herramienta sin relación con la seguridad |
-| `@types/node` | Se queda en **22** | Coincide con la versión mínima de Node soportada |
-| `express-rate-limit` | Se queda en **8.7.1** | La 8.7.2 salió el 29/10, hace menos de dos semanas |
 
 ## Arquitectura
 
@@ -158,16 +143,6 @@ src/
     *.routes.ts       HTTP: parse → servicio → código de estado. Sin lógica.
 ```
 
-- Las rutas no conocen Prisma y los repositorios no conocen HTTP. Los servicios lanzan `HttpError`
-  (`notFound('article')`, `forbidden('comment')`…) y un único manejador los serializa como
-  `{"errors": {...}}`.
-- El middleware solo **autentica** (401). La **autorización** (403, por ejemplo editar un artículo
-  ajeno) vive en los servicios, porque necesita cargar el recurso y la especificación exige 404
-  antes que 403.
-- Los repositorios cargan las relaciones que dependen de quién mira (`favorited`,
-  `author.following`) filtrando por el id del usuario, así que un listado sale en una sola consulta
-  más su `count` (sin N+1).
-- `tags` es solo una consulta de lectura y no tiene capas propias (está comentado en el código).
 
 ## Decisiones
 
@@ -178,7 +153,8 @@ src/
   la misma arquitectura. El corte vertical principal (usuarios + artículos) es el que tiene más
   pruebas propias.
 - **Express 5:** propaga los errores de los handlers `async` sin envoltorios.
-- **Prisma 6.19:** ver [Dependencias](#dependencias).
+- **Prisma 6.19, no 7/8:** la 7 obliga a usar driver adapters y la 8 es una release candidate. Una
+  vulnerabilidad del CLI de Prisma 6 (`deepmerge-ts`) se corrige con un `override` a la 8.0.2.
 - **Contraseñas con `scrypt` de `node:crypto`**, sin dependencias nativas: bcrypt trunca en
   72 bytes y la política NIST pide aceptar al menos 64 caracteres. Hay prueba de que no se trunca.
   Si el email no existe, el login compara igualmente contra un hash ficticio para no revelar por
@@ -241,8 +217,5 @@ elegí la opción más defendible y la documento aquí:
 
 ## Con más tiempo
 
-- Validar automáticamente cada respuesta contra el `openapi.yml` en las pruebas de integración.
 - Ejecutar la suite E2E de Playwright con un frontend.
-- Store compartido (Redis) para el rate limiting si hay varias instancias, y métricas (Prometheus).
 - Pasar a Postgres para producción. El esquema no depende de nada específico de SQLite.
-- Dependabot o Renovate para automatizar la revisión de dependencias.

@@ -1,3 +1,8 @@
+/**
+ * VALIDATION layer for comments: the request body (body required, sanitised, capped) and the
+ * comment id from the URL (a non-numeric id simply matches nothing).
+ */
+
 import { z } from 'zod';
 import { orEmpty, requiredString } from '../../lib/validation';
 

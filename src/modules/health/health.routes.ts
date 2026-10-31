@@ -1,9 +1,14 @@
+/**
+ * GET /api/health: liveness and database check for load balancers, monitors and CI.
+ * 200 {status: "ok", database: "ok", uptimeSeconds} or 503 when the database is unreachable.
+ * Not part of the RealWorld spec; excluded from request logs and from the HTTPS redirect.
+ */
+
 import { Router } from 'express';
 import { prisma } from '../../db';
 
 export const healthRouter = Router();
 
-// Not part of the RealWorld spec: liveness + database check for load balancers and CI.
 healthRouter.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;

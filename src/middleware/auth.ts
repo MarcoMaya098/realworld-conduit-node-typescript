@@ -1,3 +1,12 @@
+/**
+ * Authentication: who is calling?
+ * - requireAuth: 401 {token: ["is missing"]} without a header, 401 {token: ["is invalid"]}
+ *   for a malformed, tampered, expired or orphaned token.
+ * - optionalAuth: anonymous without a header, but a bad token is still a 401.
+ * Both set req.userId. Authorization (may this user edit that article?) is not decided
+ * here: it lives in the services, which must load the resource first (404 before 403).
+ */
+
 import type { Request, RequestHandler } from 'express';
 import { unauthorized } from '../errors';
 import { verifyToken } from '../lib/jwt';

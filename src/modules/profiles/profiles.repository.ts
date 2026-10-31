@@ -1,3 +1,8 @@
+/**
+ * DATA layer for profiles and follows. profileInclude() is shared by articles and comments:
+ * it loads only the viewer's own follow row, which is what "following" is computed from.
+ */
+
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../db';
 

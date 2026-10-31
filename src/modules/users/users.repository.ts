@@ -1,3 +1,8 @@
+/**
+ * DATA layer for users: lookups by id and email, the uniqueness check used for 409s
+ * (reports username and email together), create and update.
+ */
+
 import type { Prisma, User } from '@prisma/client';
 import { prisma } from '../../db';
 

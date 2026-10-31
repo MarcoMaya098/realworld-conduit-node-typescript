@@ -1,3 +1,8 @@
+/**
+ * HTTP layer for authentication: POST /users (register, 201), POST /users/login,
+ * GET /user and PUT /user (auth).
+ */
+
 import { Router } from 'express';
 import { parse } from '../../lib/validation';
 import { currentUserId, requireAuth } from '../../middleware/auth';

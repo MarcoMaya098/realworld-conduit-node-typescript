@@ -1,3 +1,8 @@
+/**
+ * HTTP layer for /api/articles/:slug/comments:
+ * GET (auth optional), POST (auth, 201) and DELETE /:id (auth, 204).
+ */
+
 import { Router } from 'express';
 import { pathParam } from '../../lib/http';
 import { parse } from '../../lib/validation';

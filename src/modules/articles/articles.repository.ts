@@ -1,3 +1,9 @@
+/**
+ * DATA layer for articles: the only code that queries articles, their tags and favorites.
+ * Loads the viewer-dependent fields (favorited, author.following) in the same query as the
+ * article, so a page of results is one query plus its count. No business rules here.
+ */
+
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../db';
 import { profileInclude } from '../profiles/profiles.repository';

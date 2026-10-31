@@ -1,3 +1,11 @@
+/**
+ * BUSINESS LOGIC for articles:
+ * - slugs: kebab-cased title, random suffix on collision, regenerated when the title changes;
+ * - ownership: only the author may update or delete (404 if missing, then 403);
+ * - feed, favorites (idempotent) and filtered, paginated lists;
+ * - mapping database rows to the API's Article shape (lists omit body, per the spec).
+ */
+
 import { forbidden, notFound } from '../../errors';
 import { slugify, withRandomSuffix } from '../../lib/slug';
 import { type ProfileDto, toProfileDto } from '../profiles/profiles.service';

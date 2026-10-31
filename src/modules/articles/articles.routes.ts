@@ -1,3 +1,11 @@
+/**
+ * HTTP layer for /api/articles: parse input, call the service, pick the status code.
+ * GET    /articles                  list (auth optional)    GET /articles/feed  feed (auth)
+ * POST   /articles                  create (201)            GET /articles/:slug read
+ * PUT    /articles/:slug            update (author only)    DELETE /articles/:slug (204)
+ * POST|DELETE /articles/:slug/favorite   favorite / unfavorite
+ */
+
 import { Router } from 'express';
 import { pathParam } from '../../lib/http';
 import { parse } from '../../lib/validation';

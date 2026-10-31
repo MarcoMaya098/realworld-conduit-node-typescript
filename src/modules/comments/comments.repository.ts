@@ -1,3 +1,8 @@
+/**
+ * DATA layer for comments: list an article's comments (oldest first) with each author's
+ * profile as seen by the viewer, look a comment up within an article, create and delete.
+ */
+
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../db';
 import { profileInclude } from '../profiles/profiles.repository';

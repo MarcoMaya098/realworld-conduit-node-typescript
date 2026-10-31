@@ -1,3 +1,12 @@
+/**
+ * VALIDATION layer for users (pure Zod, no I/O):
+ * - register: username (URL-safe characters), email (format) and password (NIST: 8-256
+ *   characters, never trimmed);
+ * - login: presence only, so a future policy change cannot lock out existing accounts;
+ * - update: at least one field; bio/image accept null and "" (normalised to null), image
+ *   must be an http(s) URL; username, email and password cannot be null or blank.
+ */
+
 import { z } from 'zod';
 import {
   atLeastOneField,

@@ -1,3 +1,10 @@
+/**
+ * Rate limiting for the two unauthenticated endpoints worth abusing: POST /users (mass
+ * sign-ups, per IP) and POST /users/login (password guessing, failed attempts only, per
+ * IP + account). Over the limit: 429 {"errors": {"requests": [...]}} with the standard
+ * RateLimit and Retry-After headers. Limits come from config; 0 disables one.
+ */
+
 import type { Request, RequestHandler } from 'express';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import type { AuthRateLimitConfig } from '../config';
