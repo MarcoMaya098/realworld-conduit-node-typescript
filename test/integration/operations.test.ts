@@ -1,7 +1,7 @@
 import supertest from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app';
-import { api, registerUser, resetDatabase } from '../helpers';
+import { api, createArticle, registerUser, resetDatabase } from '../helpers';
 
 beforeEach(resetDatabase);
 
@@ -71,5 +71,19 @@ describe('auth rate limiting', () => {
   it('does not throttle other endpoints', async () => {
     const client = limitedApi();
     for (let i = 0; i < 5; i++) await client.get('/api/tags').expect(200);
+  });
+});
+
+describe('compression', () => {
+  it('gzips large responses for clients that accept it, and leaves small ones alone', async () => {
+    const token = await registerUser('writer');
+    const { slug } = await createArticle(token, { title: 'Long read', body: 'lorem ipsum '.repeat(500) });
+
+    const large = await api.get(`/api/articles/${slug}`).set('Accept-Encoding', 'gzip').expect(200);
+    expect(large.headers['content-encoding']).toBe('gzip');
+    expect(large.body.article.body).toBe('lorem ipsum '.repeat(500).trim());
+
+    const small = await api.get('/api/tags').set('Accept-Encoding', 'gzip').expect(200);
+    expect(small.headers['content-encoding']).toBeUndefined();
   });
 });

@@ -1,11 +1,20 @@
-import './env';
+/**
+ * Entry point: loads .env, starts the HTTP(S) server and handles graceful shutdown. On
+ * SIGINT/SIGTERM it stops accepting connections, lets in-flight requests finish, then closes
+ * the database; if that takes too long it exits anyway. A crash (uncaught exception or
+ * unhandled rejection) is logged and goes through the same shutdown with exit code 1.
+ */
+
+import './config/env';
 import { readFileSync } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { createApp } from './app';
 import { config } from './config';
-import { prisma } from './infrastructure/prisma';
-import { logger } from './logger';
+import { closeDatabase } from './config/database';
+import { logger } from './utils/logger';
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const app = createApp();
 
@@ -28,12 +37,34 @@ server.listen(config.port, () => {
   );
 });
 
-function shutdown(signal: string): void {
-  logger.info({ signal }, 'shutting down');
+let shuttingDown = false;
+
+function shutdown(reason: string, exitCode: number): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ reason }, 'shutting down');
+
+  setTimeout(() => {
+    logger.error({ timeoutMs: SHUTDOWN_TIMEOUT_MS }, 'graceful shutdown timed out, forcing exit');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS).unref();
+
   server.close(() => {
-    void prisma.$disconnect().finally(() => process.exit(0));
+    closeDatabase()
+      .catch((err: unknown) => logger.error({ err }, 'error closing the database'))
+      .finally(() => process.exit(exitCode));
   });
+  // Keep-alive connections would otherwise hold server.close() open until they time out.
+  server.closeIdleConnections();
 }
 
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT', 0));
+process.on('SIGTERM', () => shutdown('SIGTERM', 0));
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'uncaught exception');
+  shutdown('uncaughtException', 1);
+});
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ err: reason }, 'unhandled promise rejection');
+  shutdown('unhandledRejection', 1);
+});

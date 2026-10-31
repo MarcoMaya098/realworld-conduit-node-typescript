@@ -1,7 +1,7 @@
 /** Health check: the database must answer. Rejects (with the cause) when it does not. */
 
-import type { HealthRepository } from '../domain/repositories';
-import type { HealthReport } from '../dtos/health.dto';
+import type { HealthRepository } from '../types/repository.types';
+import type { HealthReport } from '../types/health.types';
 
 export class HealthService {
   constructor(

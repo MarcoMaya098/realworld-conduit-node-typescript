@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import { createApp } from '../src/app';
-import { prisma } from '../src/infrastructure/prisma';
+import { prisma } from '../src/config/database';
 
 export const api = supertest(createApp());
 

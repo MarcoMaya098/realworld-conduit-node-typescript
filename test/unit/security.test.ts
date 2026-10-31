@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { describe, expect, it } from 'vitest';
-import { JwtTokenService } from '../../src/infrastructure/jwt-token-service';
-import { ScryptPasswordHasher } from '../../src/infrastructure/scrypt-password-hasher';
+import { JwtTokenService } from '../../src/services/token.service';
+import { ScryptPasswordService } from '../../src/services/password.service';
 
-const hasher = new ScryptPasswordHasher();
+const hasher = new ScryptPasswordService();
 const hashPassword = (password: string) => hasher.hash(password);
 const verifyPassword = (password: string, stored: string | undefined) => hasher.verify(password, stored);
 

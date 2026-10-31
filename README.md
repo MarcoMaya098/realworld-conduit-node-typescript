@@ -7,7 +7,7 @@ con **Node.js + TypeScript + Express 5 + Prisma 6 + SQLite**.
 | --- | --- |
 | Colección oficial de la API (Hurl) | **13/13 ficheros, 154/154 peticiones** |
 | Colección oficial Bruno (espejo generado de la Hurl) | **13/13 carpetas, 154/154 peticiones** |
-| Pruebas propias (Vitest + Supertest) | **95/95** (unitarias + integración) |
+| Pruebas propias (Vitest + Supertest) | **102/102** (unitarias + integración) |
 | `npm audit` | **0 vulnerabilidades** (también se comprueba en el CI) |
 | Especificación verificada | `gothinkster/realworld@c5aecdf` (30/10/2026), OpenAPI `2.0.0` |
 
@@ -113,46 +113,82 @@ cliente. Escapar al mostrar es responsabilidad del frontend (la suite E2E de Rea
   - **Limitación:** el contador vive en la memoria del proceso. Con varias instancias haría falta
     un store compartido (Redis). Detrás de un proxy hay que fijar `TRUST_PROXY_HOPS` para que el
     límite use la IP real del cliente.
+- **Compresión gzip** de las respuestas de más de 1 KB para clientes que la aceptan.
+- **Apagado ordenado** con `SIGINT`/`SIGTERM`: deja de aceptar conexiones, termina las peticiones
+  en curso y cierra la base de datos; si tarda más de 10 s, sale igualmente. Una excepción no
+  capturada o una promesa rechazada sin manejar se registran como `fatal` y siguen el mismo camino
+  con código de salida 1. Los avisos y errores de Prisma también salen por el logger.
 
 
 ## Arquitectura
 
-Clean architecture con capas por tipo e inyección de dependencias por constructor:
+Arquitectura en capas con inyección de dependencias, siguiendo el orden de la skill
+[`nodejs-backend-patterns`](https://github.com/wshobson/agents) (Layered Architecture):
 
 ```
 src/
-  domain/            NÚCLEO. No importa Express ni Prisma.
-    entities/          User, Profile, Article, Comment, Pagination (tipos planos)
-    repositories.ts    Interfaces (puertos) de persistencia: UserRepository, ArticleRepository…
-    security.ts        Interfaces PasswordHasher y TokenService
-    errors.ts          DomainError (unauthenticated, forbidden, not_found, conflict, invalid)
-  dtos/              Contratos de datos: entradas de los servicios y formas JSON de la especificación.
-  types/             Tipos de configuración y cableado (AppOptions, Container…) y la extensión
-                     de Request de Express (express.d.ts).
-  services/          LÓGICA: reglas de negocio, permisos, slugs, conflictos. Reciben interfaces.
-  repositories/      DATOS: implementaciones Prisma de los puertos; includes, tipos de fila
-                     (prisma-rows.types.ts) y mappers filas → entidades.
-  infrastructure/    Cliente Prisma, ScryptPasswordHasher, JwtTokenService.
-  validators/        VALIDACIÓN: forma, límites y saneamiento de la entrada (Zod). Sin E/S.
-  controllers/       HTTP: valida → llama al servicio → código de estado; presenters.ts da la
-                     forma JSON de la especificación (DTOs).
-  routes/            Tabla de rutas: método + path → middleware de auth → controller.
-  middleware/        auth, security (helmet, CORS, HTTPS), rate-limit, request-logger,
-                     error-handler (DomainError → código HTTP).
-  container.ts       Raíz de composición: único sitio que elige implementaciones y las inyecta.
-  app.ts, server.ts, config.ts, env.ts, logger.ts, docs.ts (Swagger UI)
-  lib/               validation (Zod → formato de error RealWorld), slug, http
+  controllers/   HTTP: leen la entrada ya validada, llaman al servicio y eligen el código de estado.
+  services/      LÓGICA: reglas de negocio, permisos, slugs, conflictos. También password.service
+                 (scrypt) y token.service (JWT). Reciben sus dependencias por constructor.
+  repositories/  DATOS: implementaciones Prisma de las interfaces de repositorio; includes y
+                 mappers fila → modelo. Único sitio que habla con Prisma.
+  models/        Modelos de datos: User, Profile, Article, Comment, Pagination (tipos planos).
+  middleware/    auth, validation (Zod), rate-limit, logger (pino), security (helmet, CORS,
+                 HTTPS) y error-handler (manejador global).
+  routes/        Una definición de rutas por recurso: método + path → auth → validate → controller.
+  validators/    Schemas Zod: forma, límites y saneamiento de la entrada. Sin E/S.
+  utils/         errors (AppError y subclases), validation, response (formato JSON de la
+                 especificación), http, slug, logger.
+  config/        index (variables de entorno), env (.env), database (cliente Prisma y cierre).
+  types/         Interfaces y tipos: repositorios, seguridad, DTOs por recurso, configuración,
+                 registro del contenedor y la extensión de Request de Express (express.d.ts).
+  di-container.ts  Contenedor DI tipado (register / singleton / resolve) y raíz de composición.
+  app.ts, server.ts
 ```
 
-Los archivos de comportamiento (servicios, controllers, rutas, middleware, repositorios) no
-declaran interfaces ni tipos: los contratos viven en `domain/`, `dtos/`, `types/` o en un
-`*.types.ts`.
+- **Recorrido de una petición:** `routes` → `auth.middleware` (401) → `validation.middleware`
+  (422) → `controller` → `service` (404/403/409) → `repository` → Prisma. Cualquier `AppError`
+  llega al `error-handler`, que responde con su `statusCode` y el cuerpo `{"errors":{…}}`.
+- **Inyección de dependencias:** los servicios dependen de interfaces (`types/repository.types.ts`,
+  `types/security.types.ts`), no de Prisma. `di-container.ts` es el único sitio que elige las
+  implementaciones; servicios y repositorios son singletons y los controllers se crean por
+  resolución. Los servicios se prueban con dobles inyectados, sin base de datos
+  (`test/unit/services.test.ts`), y `createApp(overrides, container)` acepta otro contenedor.
+- **Contratos separados del comportamiento:** servicios, controllers, rutas, middleware y
+  repositorios no declaran interfaces ni tipos; viven en `types/` y `models/`.
 
-Las dependencias apuntan hacia dentro: `controllers → services → domain ← repositories`.
-Los servicios solo conocen interfaces del dominio, así que se prueban con dobles sin base de
-datos (`test/unit/services.test.ts`), y cambiar Prisma por otra persistencia solo afecta a
-`repositories/`, `infrastructure/` y `container.ts`. `createApp(overrides, container)` acepta
-otro contenedor para los tests.
+### Buenas prácticas de la skill
+
+| # | Práctica | Dónde |
+| --- | --- | --- |
+| 1 | TypeScript | Todo el código, `strict` y `noUncheckedIndexedAccess` |
+| 2 | Clases de error propias | `utils/errors.ts`: `AppError` → `ValidationError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `TooManyRequestsError` |
+| 3 | Validar la entrada | Zod en `validators/` aplicado por `middleware/validation.middleware.ts` |
+| 4 | Variables de entorno | `config/index.ts`; `JWT_SECRET` obligatorio (≥ 32) en producción |
+| 5 | Logs estructurados | pino + pino-http, con request id (ver [Operación](#operación)) |
+| 6 | Rate limiting | Registro y login (ver [Operación](#operación)) |
+| 7 | HTTPS en producción | `REQUIRE_HTTPS` (ver [Seguridad](#seguridad)) |
+| 8 | CORS sin `*` | Lista de orígenes `CORS_ORIGINS` |
+| 9 | Inyección de dependencias | `di-container.ts` |
+| 10 | Tests | Unitarios e integración (Vitest + Supertest) y la suite oficial Hurl/Bruno como E2E de la API |
+| 11 | Apagado ordenado | `server.ts`: deja terminar las peticiones, cierra la base de datos, límite de 10 s; también ante excepciones no capturadas |
+| 12 | Pool de conexiones | Prisma gestiona su pool; se ajusta con `connection_limit` en `DATABASE_URL` |
+| 13 | Health check | `GET /api/health` |
+| 14 | Compresión | `compression` (gzip para respuestas de más de 1 KB) |
+| 15 | Monitorización | Logs estructurados con `responseTime` por petición; un APM queda fuera del alcance (ver [Con más tiempo](#con-más-tiempo)) |
+
+Donde los ejemplos de la skill chocan con la especificación RealWorld o con una decisión de
+seguridad, prevalece la especificación y lo documento:
+
+| Ejemplo de la skill | Aquí | Motivo |
+| --- | --- | --- |
+| Respuestas `{status, message, data}` (`ApiResponse`) | Formato de la especificación (`{"user":…}`, `{"errors":{…}}`) | Lo exige el contrato y la suite oficial |
+| `ValidationError` con 400 | 422 | El OpenAPI usa 422 para entrada inválida |
+| bcrypt | scrypt de `node:crypto` | bcrypt trunca a 72 bytes (ver Decisiones) |
+| Access token de 15 min + refresh token | Un token de 30 días, sin refresh | La especificación no define refresh tokens |
+| `asyncHandler` | No hace falta | Express 5 propaga los errores de handlers `async` |
+| Rate limit con Redis | Memoria del proceso | Una sola instancia; Redis haría falta al escalar |
+| Caché Redis | Sin caché | No aporta en este tamaño y complica la invalidación |
 
 
 ## Decisiones
@@ -215,7 +251,8 @@ elegí la opción más defendible y la documento aquí:
 
 - `test/unit/`: validación (formato de error, normalización, saneamiento, límites, política de
   contraseñas, paginación), seguridad (hash sin truncado; JWT manipulado, con otro secreto, otro
-  issuer/audience, `alg: none` o caducado) y slugs.
+  issuer/audience, `alg: none` o caducado), slugs, clases de error y contenedor DI (`register`
+  frente a `singleton`, creación perezosa, clave no registrada).
   - `services.test.ts`: reglas de negocio con repositorios falsos inyectados, sin base de datos
     (404 antes que 403, solo el autor edita o borra, slug y `updatedAt` al actualizar, sufijo
     ante colisión, login con tiempo constante, 409 con todos los campos, contraseña hasheada).
@@ -224,7 +261,7 @@ elegí la opción más defendible y la documento aquí:
   combinados, borrado en cascada, slug tras cambiar el título, 404 antes que 403, un comentario que
   no se puede borrar desde el slug de otro artículo, idempotencia y 401 `is missing` frente a
   `is invalid`.
-  - `operations.test.ts`: health, request ids y rate limiting.
+  - `operations.test.ts`: health, request ids, rate limiting y compresión.
   - `security.test.ts`: cabeceras de helmet, CORS (origen permitido, denegado, preflight, imitación
     de `localhost`), HTTPS (redirección, rechazo, proxy de confianza), Swagger desactivable y
     saneamiento de punta a punta.
@@ -232,4 +269,5 @@ elegí la opción más defendible y la documento aquí:
 ## Con más tiempo
 
 - Ejecutar la suite E2E de Playwright con un frontend.
+- Un APM (OpenTelemetry) para métricas y trazas.
 - Pasar a Postgres para producción. El esquema no depende de nada específico de SQLite.

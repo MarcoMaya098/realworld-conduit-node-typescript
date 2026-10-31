@@ -8,11 +8,11 @@ import type { RequestHandler } from 'express';
 import type { HealthService } from '../services/health.service';
 
 export class HealthController {
-  constructor(private readonly health: HealthService) {}
+  constructor(private readonly healthService: HealthService) {}
 
   check: RequestHandler = async (req, res) => {
     try {
-      res.json(await this.health.check());
+      res.json(await this.healthService.check());
     } catch (err) {
       req.log.error({ err }, 'health check: database unreachable');
       res.status(503).json({ status: 'error', database: 'unreachable' });

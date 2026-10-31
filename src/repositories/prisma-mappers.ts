@@ -1,12 +1,12 @@
 /**
- * DATA layer: mappers from Prisma rows to domain entities. Nothing outside src/repositories/
+ * DATA layer: mappers from Prisma rows to models. Nothing outside src/repositories/
  * sees a Prisma type.
  */
 
-import type { Article } from '../domain/entities/article';
-import type { Comment } from '../domain/entities/comment';
-import type { Profile } from '../domain/entities/profile';
-import type { ArticleRow, CommentRow, ProfileRow } from './prisma-rows.types';
+import type { Article } from '../models/article.model';
+import type { Comment } from '../models/comment.model';
+import type { Profile } from '../models/profile.model';
+import type { ArticleRow, CommentRow, ProfileRow } from '../types/prisma.types';
 
 export function toProfile(row: ProfileRow): Profile {
   return {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { slugify, withRandomSuffix } from '../../src/lib/slug';
+import { slugify, withRandomSuffix } from '../../src/utils/slug';
 
 describe('slugify', () => {
   it('kebab-cases and strips accents and punctuation', () => {
