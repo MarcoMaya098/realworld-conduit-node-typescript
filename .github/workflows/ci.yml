@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./ci.db
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Install Hurl
+        run: |
+          VERSION=6.1.1
+          curl --fail --location --remote-name "https://github.com/Orange-OpenSource/hurl/releases/download/${VERSION}/hurl_${VERSION}_amd64.deb"
+          sudo apt-get update && sudo apt-get install -y "./hurl_${VERSION}_amd64.deb"
+
+      # Production build and defaults, except plain HTTP: the suite talks to localhost without
+      # TLS, which in a real deployment would be terminated by a proxy in front of the app.
+      - name: Build and start the API
+        run: |
+          npm run build
+          npm run db:migrate
+          export JWT_SECRET="$(openssl rand -hex 32)"
+          NODE_ENV=production REQUIRE_HTTPS=false nohup npm start > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/api/health > /dev/null && exit 0; sleep 1; done
+          cat server.log; exit 1
+
+      - name: Official RealWorld API suite (Hurl)
+        run: npm run test:api
